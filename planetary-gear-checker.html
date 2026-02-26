@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planetary Gear Analyzer</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0c10;
+    --panel: #0e1218;
+    --border: #1e2d40;
+    --accent: #00d4ff;
+    --accent2: #ff6b00;
+    --accent3: #00ff88;
+    --warn: #ffcc00;
+    --danger: #ff3366;
+    --text: #c8dcea;
+    --dim: #4a6275;
+    --glow: 0 0 20px rgba(0,212,255,0.3);
+    --glow2: 0 0 20px rgba(255,107,0,0.3);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .gear-icon {
+    display: inline-block;
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    animation: spin 8s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  header h1 {
+    font-family: 'Orbitron', monospace;
+    font-size: clamp(1.4rem, 4vw, 2.4rem);
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,212,255,0.5);
+    line-height: 1.2;
+  }
+
+  header h1 span {
+    color: var(--accent2);
+    text-shadow: 0 0 30px rgba(255,107,0,0.5);
+  }
+
+  header p {
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--dim);
+    font-size: 0.75rem;
+    letter-spacing: 0.2em;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+  }
+
+  .corner-bracket {
+    position: absolute;
+    width: 20px; height: 20px;
+    border-color: var(--accent);
+    border-style: solid;
+    opacity: 0.5;
+  }
+  .corner-bracket.tl { top: 0; left: 0; border-width: 2px 0 0 2px; }
+  .corner-bracket.tr { top: 0; right: 0; border-width: 2px 2px 0 0; }
+  .corner-bracket.bl { bottom: 0; left: 0; border-width: 0 0 2px 2px; }
+  .corner-bracket.br { bottom: 0; right: 0; border-width: 0 2px 2px 0; }
+
+  /* Input section */
+  .input-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 580px) {
+    .input-grid { grid-template-columns: 1fr; }
+  }
+
+  .input-block {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.2rem 1.4rem;
+    position: relative;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .input-block:focus-within {
+    border-color: var(--accent);
+    box-shadow: var(--glow);
+  }
+
+  .input-block label {
+    display: block;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--dim);
+    margin-bottom: 0.4rem;
+  }
+
+  .input-block .gear-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--accent);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .input-block .gear-label.planet { color: var(--accent2); }
+  .input-block .gear-label.ring { color: var(--accent3); }
+  .input-block .gear-label.np { color: var(--warn); }
+
+  .gear-symbol {
+    font-size: 1.4rem;
+    opacity: 0.8;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid var(--border);
+    color: #fff;
+    font-family: 'Orbitron', monospace;
+    font-size: 1.8rem;
+    font-weight: 700;
+    padding: 0.3rem 0;
+    outline: none;
+    transition: border-color 0.3s;
+    -moz-appearance: textfield;
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+  input[type="number"]:focus { border-bottom-color: var(--accent); }
+
+  .input-hint {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    color: var(--dim);
+    margin-top: 0.5rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* Analyze button */
+  .btn-wrap { text-align: center; margin-bottom: 2rem; }
+
+  button#analyze {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--bg);
+    background: var(--accent);
+    border: none;
+    padding: 1rem 3rem;
+    cursor: pointer;
+    position: relative;
+    clip-path: polygon(12px 0%, 100% 0%, calc(100% - 12px) 100%, 0% 100%);
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    box-shadow: 0 0 25px rgba(0,212,255,0.4);
+  }
+
+  button#analyze:hover {
+    background: #33deff;
+    box-shadow: 0 0 40px rgba(0,212,255,0.7);
+    transform: translateY(-2px);
+  }
+
+  button#analyze:active { transform: translateY(0); }
+
+  /* Results panel */
+  #results {
+    display: none;
+    animation: fadeSlide 0.4s ease;
+  }
+
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1.4rem 1.6rem;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .result-section::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+  }
+
+  .result-section.pass::before { background: var(--accent3); }
+  .result-section.fail::before { background: var(--danger); }
+  .result-section.info::before { background: var(--accent); }
+
+  .result-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    margin-bottom: 0.6rem;
+  }
+
+  .result-title.pass { color: var(--accent3); }
+  .result-title.fail { color: var(--danger); }
+  .result-title.info { color: var(--accent); }
+
+  .check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+    margin-bottom: 0.6rem;
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  .check-row:last-child { margin-bottom: 0; }
+
+  .status-icon {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    padding: 0.1rem 0.3rem;
+    border-radius: 2px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .status-icon.ok { background: rgba(0,255,136,0.15); color: var(--accent3); border: 1px solid rgba(0,255,136,0.3); }
+  .status-icon.err { background: rgba(255,51,102,0.15); color: var(--danger); border: 1px solid rgba(255,51,102,0.3); }
+
+  .check-text { color: var(--text); font-size: 0.95rem; }
+  .check-text strong { color: #fff; font-weight: 600; }
+  .check-text .mono { font-family: 'Share Tech Mono', monospace; font-size: 0.9rem; color: var(--accent); }
+
+  /* Ratio display */
+  .ratio-display {
+    text-align: center;
+    padding: 1rem;
+  }
+
+  .ratio-label {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 0.3em;
+    color: var(--dim);
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+
+  .ratio-value {
+    font-family: 'Orbitron', monospace;
+    font-size: 3rem;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: 0 0 30px rgba(0,212,255,0.6);
+    line-height: 1;
+  }
+
+  .ratio-fraction {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--dim);
+    margin-top: 0.3rem;
+    letter-spacing: 0.1em;
+  }
+
+  /* Gear diagram */
+  .diagram-wrap {
+    text-align: center;
+    margin: 0.5rem 0 0;
+  }
+
+  svg#gear-diagram {
+    max-width: 280px;
+    width: 100%;
+    height: auto;
+  }
+
+  /* Summary badge */
+  .summary-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.4rem;
+    border-radius: 4px;
+    margin-bottom: 1.5rem;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  .summary-banner.all-pass {
+    background: rgba(0,255,136,0.08);
+    border: 1px solid rgba(0,255,136,0.3);
+    color: var(--accent3);
+    box-shadow: 0 0 20px rgba(0,255,136,0.1);
+  }
+
+  .summary-banner.has-fail {
+    background: rgba(255,51,102,0.08);
+    border: 1px solid rgba(255,51,102,0.3);
+    color: var(--danger);
+    box-shadow: 0 0 20px rgba(255,51,102,0.1);
+  }
+
+  .summary-icon { font-size: 1.5rem; }
+
+  /* Equation display */
+  .equation {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    color: var(--dim);
+    background: rgba(0,0,0,0.3);
+    padding: 0.5rem 0.8rem;
+    border-radius: 3px;
+    margin-top: 0.5rem;
+    display: inline-block;
+  }
+
+  .equation .val { color: var(--accent); }
+  .equation .op { color: var(--accent2); }
+  .equation .result-val { color: var(--accent3); }
+
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.5rem 0;
+  }
+
+  /* Scanline overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,0,0,0.03) 2px,
+      rgba(0,0,0,0.03) 4px
+    );
+    pointer-events: none;
+    z-index: 999;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="corner-bracket tl"></div>
+    <div class="corner-bracket tr"></div>
+    <div class="corner-bracket bl"></div>
+    <div class="corner-bracket br"></div>
+    <div class="gear-icon">⚙</div>
+    <h1>PLANETARY GEAR <span>ANALYZER</span></h1>
+    <p>// gear set validation &amp; ratio calculator //</p>
+  </header>
+
+  <div class="input-grid">
+    <div class="input-block">
+      <label>Gear Component</label>
+      <div class="gear-label">☀ SUN GEAR</div>
+      <input type="number" id="sun" min="1" placeholder="—" />
+      <div class="input-hint">S = teeth on sun gear</div>
+    </div>
+    <div class="input-block">
+      <label>Gear Component</label>
+      <div class="gear-label planet">● PLANET GEAR</div>
+      <input type="number" id="planet" min="1" placeholder="—" />
+      <div class="input-hint">P = teeth on each planet</div>
+    </div>
+    <div class="input-block">
+      <label>Gear Component</label>
+      <div class="gear-label ring">◎ RING GEAR</div>
+      <input type="number" id="ring" min="1" placeholder="—" />
+      <div class="input-hint">R = teeth on ring gear</div>
+    </div>
+    <div class="input-block">
+      <label>System Configuration</label>
+      <div class="gear-label np">⊕ NO. OF PLANETS</div>
+      <input type="number" id="np" min="1" placeholder="—" />
+      <div class="input-hint">N = number of planet gears</div>
+    </div>
+  </div>
+
+  <div class="btn-wrap">
+    <button id="analyze" onclick="analyze()">▶ ANALYZE GEAR SET</button>
+  </div>
+
+  <div id="results"></div>
+
+</div>
+
+<script>
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
+
+function analyze() {
+  const S = parseInt(document.getElementById('sun').value);
+  const P = parseInt(document.getElementById('planet').value);
+  const R = parseInt(document.getElementById('ring').value);
+  const N = parseInt(document.getElementById('np').value);
+
+  const resultsDiv = document.getElementById('results');
+
+  if ([S, P, R, N].some(v => isNaN(v) || v < 1)) {
+    resultsDiv.style.display = 'block';
+    resultsDiv.innerHTML = `
+      <div class="summary-banner has-fail">
+        <span class="summary-icon">⚠</span>
+        <span>INVALID INPUT — ENTER ALL VALUES &gt; 0</span>
+      </div>`;
+    return;
+  }
+
+  // Check 1: Geometry constraint r = 2p + s
+  const geoCheck = R === 2 * P + S;
+  const geoExpected = 2 * P + S;
+
+  // Check 2: Equal spacing — (S + R) must be divisible by N
+  const spacingCheck = ((S + R) % N === 0);
+
+  // Check 3: Sun divisible by N (needed for meshing phase)
+  const sunDivCheck = S % N === 0;
+
+  // Check 4: Ring divisible by N
+  const ringDivCheck = R % N === 0;
+
+  const allPass = geoCheck && spacingCheck && sunDivCheck && ringDivCheck;
+
+  // Gear ratio: sun input, carrier output, ring fixed
+  // Ratio = 1 + R/S
+  const ratioNum = S + R;
+  const ratioDen = S;
+  const g = gcd(ratioNum, ratioDen);
+  const ratioSimplified = `${ratioNum/g} : ${ratioDen/g}`;
+  const ratioDecimal = (ratioNum / ratioDen).toFixed(4);
+
+  let html = '';
+
+  // Summary banner
+  html += `
+    <div class="summary-banner ${allPass ? 'all-pass' : 'has-fail'}">
+      <span class="summary-icon">${allPass ? '✔' : '✘'}</span>
+      <span>${allPass ? 'ALL CHECKS PASSED — GEAR SET IS VALID' : 'VALIDATION FAILED — SEE DETAILS BELOW'}</span>
+    </div>`;
+
+  // Geometry check
+  html += `
+    <div class="result-section ${geoCheck ? 'pass' : 'fail'}">
+      <div class="result-title ${geoCheck ? 'pass' : 'fail'}">// CHECK 01 — GEOMETRY CONSTRAINT //</div>
+      <div class="check-row">
+        <span class="status-icon ${geoCheck ? 'ok' : 'err'}">${geoCheck ? 'OK' : 'FAIL'}</span>
+        <div class="check-text">
+          Required: <strong>R = 2P + S</strong><br>
+          <span class="equation">
+            <span class="val">${R}</span>
+            <span class="op"> =? </span>
+            2 × <span class="val">${P}</span> + <span class="val">${S}</span>
+            <span class="op"> → </span>
+            <span class="${geoCheck ? 'result-val' : ''}">${geoExpected}</span>
+          </span><br>
+          ${geoCheck
+            ? `The ring gear tooth count satisfies the planetary geometry equation.`
+            : `Ring gear has <strong>${R}</strong> teeth but equation requires <strong>${geoExpected}</strong> teeth for physical fit.`}
+        </div>
+      </div>
+    </div>`;
+
+  // Spacing checks
+  const spacingAllPass = sunDivCheck && ringDivCheck && spacingCheck;
+  html += `
+    <div class="result-section ${spacingAllPass ? 'pass' : 'fail'}">
+      <div class="result-title ${spacingAllPass ? 'pass' : 'fail'}">// CHECK 02 — EQUAL PLANET SPACING //</div>`;
+
+  html += `
+      <div class="check-row">
+        <span class="status-icon ${sunDivCheck ? 'ok' : 'err'}">${sunDivCheck ? 'OK' : 'FAIL'}</span>
+        <div class="check-text">
+          <strong>Sun ÷ Planets:</strong>
+          <span class="equation">
+            <span class="val">${S}</span>
+            <span class="op"> ÷ </span>
+            <span class="val">${N}</span>
+            <span class="op"> = </span>
+            <span class="${sunDivCheck ? 'result-val' : ''}">${S/N} ${sunDivCheck ? '✔' : `(remainder ${S % N})`}</span>
+          </span><br>
+          ${sunDivCheck
+            ? `Sun gear teeth are evenly divisible by number of planets.`
+            : `Sun gear teeth (<strong>${S}</strong>) are not evenly divisible by <strong>${N}</strong> planets.`}
+        </div>
+      </div>
+      <div class="check-row">
+        <span class="status-icon ${ringDivCheck ? 'ok' : 'err'}">${ringDivCheck ? 'OK' : 'FAIL'}</span>
+        <div class="check-text">
+          <strong>Ring ÷ Planets:</strong>
+          <span class="equation">
+            <span class="val">${R}</span>
+            <span class="op"> ÷ </span>
+            <span class="val">${N}</span>
+            <span class="op"> = </span>
+            <span class="${ringDivCheck ? 'result-val' : ''}">${R/N} ${ringDivCheck ? '✔' : `(remainder ${R % N})`}</span>
+          </span><br>
+          ${ringDivCheck
+            ? `Ring gear teeth are evenly divisible by number of planets.`
+            : `Ring gear teeth (<strong>${R}</strong>) are not evenly divisible by <strong>${N}</strong> planets.`}
+        </div>
+      </div>
+    </div>`;
+
+  // Gear ratio (only show if geometry passes)
+  if (geoCheck) {
+    html += `
+      <div class="result-section info">
+        <div class="result-title info">// GEAR RATIO — SUN → CARRIER (RING FIXED) //</div>
+        <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+          <div class="ratio-display">
+            <div class="ratio-label">Velocity Ratio</div>
+            <div class="ratio-value">${ratioDecimal}<span style="font-size:1rem; color:var(--dim);">:1</span></div>
+            <div class="ratio-fraction">${ratioSimplified} simplified</div>
+          </div>
+          <div style="flex:1; min-width:200px;">
+            <div class="check-text" style="margin-bottom:0.6rem;">
+              With the ring gear <strong>fixed</strong>, sun gear as <strong>input</strong>, and carrier as <strong>output</strong>:
+            </div>
+            <span class="equation">
+              Ratio = (S + R) / S = (<span class="val">${S}</span> + <span class="val">${R}</span>) / <span class="val">${S}</span> = <span class="result-val">${ratioDecimal}</span>
+            </span>
+            <div class="check-text" style="margin-top:0.7rem; font-size:0.85rem; color:var(--dim);">
+              The carrier rotates <strong style="color:#fff;">${ratioDecimal}×</strong> slower than the sun — torque is amplified by the same factor.
+            </div>
+          </div>
+        </div>
+        ${renderDiagram(S, P, R, N)}
+      </div>`;
+  }
+
+  resultsDiv.style.display = 'block';
+  resultsDiv.innerHTML = html;
+}
+
+function renderDiagram(S, P, R, N) {
+  const cx = 140, cy = 140, r = 130;
+  const ringR = 115, sunR = 30, planetR = (ringR - sunR) / 2;
+  const orbitR = sunR + planetR;
+
+  let svgContent = '';
+
+  // Ring
+  svgContent += `<circle cx="${cx}" cy="${cy}" r="${ringR}" fill="none" stroke="rgba(0,255,136,0.5)" stroke-width="2.5" stroke-dasharray="6 3"/>`;
+  svgContent += `<circle cx="${cx}" cy="${cy}" r="${ringR + 10}" fill="none" stroke="rgba(0,255,136,0.2)" stroke-width="10"/>`;
+
+  // Orbit path
+  svgContent += `<circle cx="${cx}" cy="${cy}" r="${orbitR}" fill="none" stroke="rgba(255,107,0,0.1)" stroke-width="1" stroke-dasharray="3 4"/>`;
+
+  // Sun
+  svgContent += `<circle cx="${cx}" cy="${cy}" r="${sunR}" fill="rgba(0,212,255,0.1)" stroke="rgba(0,212,255,0.7)" stroke-width="2"/>`;
+  svgContent += `<text x="${cx}" y="${cy + 5}" text-anchor="middle" font-family="Orbitron,monospace" font-size="9" fill="rgba(0,212,255,0.9)" font-weight="700">SUN</text>`;
+
+  // Planets
+  const count = Math.min(N, 8);
+  for (let i = 0; i < count; i++) {
+    const angle = (2 * Math.PI * i) / count - Math.PI / 2;
+    const px = cx + orbitR * Math.cos(angle);
+    const py = cy + orbitR * Math.sin(angle);
+    svgContent += `<circle cx="${px}" cy="${py}" r="${planetR}" fill="rgba(255,107,0,0.1)" stroke="rgba(255,107,0,0.7)" stroke-width="2"/>`;
+    svgContent += `<text x="${px}" y="${py + 4}" text-anchor="middle" font-family="Orbitron,monospace" font-size="7" fill="rgba(255,107,0,0.9)" font-weight="700">P${i+1}</text>`;
+  }
+  if (N > 8) {
+    svgContent += `<text x="${cx}" y="${cy + ringR + 22}" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="8" fill="rgba(255,204,0,0.7)">+ ${N-8} MORE PLANETS NOT SHOWN</text>`;
+  }
+
+  // Labels
+  svgContent += `<text x="${cx}" y="18" text-anchor="middle" font-family="Share Tech Mono,monospace" font-size="8" fill="rgba(0,255,136,0.6)" letter-spacing="2">RING GEAR (FIXED)</text>`;
+
+  return `
+    <div class="diagram-wrap">
+      <svg id="gear-diagram" viewBox="0 0 280 ${N > 8 ? 295 : 280}" xmlns="http://www.w3.org/2000/svg">
+        ${svgContent}
+      </svg>
+    </div>`;
+}
+
+// Allow Enter key to trigger analyze
+document.addEventListener('keydown', e => { if (e.key === 'Enter') analyze(); });
+</script>
+</body>
+</html>
